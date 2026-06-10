@@ -32,7 +32,7 @@ const MapGame = () => {
     return formattedData.filter(country => !EXCLUDED_CODES.includes(country.code));
   }, [rawCountries]);
 
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, addXp } = useAuth();
 
   // Stan gry
   const [gameType, setGameType] = useState<"standard" | "learning" | "time" | null>(null);
@@ -207,6 +207,10 @@ const MapGame = () => {
     if (clickedCountryName === currentCountry.name) {
       setIsCorrect(true);
       setScore(score + 1);
+      if (isAuthenticated && user) {
+        addXp(10);
+        toast.success("+10 XP! 🎉", { duration: 1000, position: "top-center" });
+      }
       if (gameType === "learning" && isAuthenticated && user) {
         const countryCode = currentCountry.code;
         saveProgressToBackend(countryCode);

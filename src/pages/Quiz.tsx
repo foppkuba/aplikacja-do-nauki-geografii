@@ -22,7 +22,7 @@ interface Question {
 
 const Quiz = () => {
   const { data: allCountries = [], isLoading } = useCountries();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, addXp } = useAuth();
 
   // Stan gry
   const [gameType, setGameType] = useState<"standard" | "learning" | "time" | null>(null);
@@ -240,6 +240,10 @@ const Quiz = () => {
     
     if (answer === questions[currentQuestion].correctAnswer) {
       setScore(score + 1);
+      if (isAuthenticated && user) {
+        addXp(10);
+        toast.success("+10 XP! 🎉", { duration: 1000, position: "top-center" });
+      }
       if (gameType === "learning" && isAuthenticated && user) {
         const countryCode = questions[currentQuestion].flagCode;
         saveProgressToBackend(countryCode);

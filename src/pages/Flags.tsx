@@ -16,7 +16,7 @@ const Flags = () => {
   const navigate = useNavigate();
   
   const { data: allCountries = [], isLoading, isError: error } = useCountries();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, addXp } = useAuth();
 
   // Stan gry
   const [gameType, setGameType] = useState<"standard" | "learning" | "time" | null>(null);
@@ -211,6 +211,10 @@ const Flags = () => {
     
     if (answer === currentCountry.name) {
       setScore(prev => prev + 1);
+      if (isAuthenticated && user) {
+        addXp(10);
+        toast.success("+10 XP! 🎉", { duration: 1000, position: "top-center" });
+      }
       if (gameType === "learning" && isAuthenticated && user) {
         const countryCode = currentCountry.code;
         saveProgressToBackend(countryCode);

@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Brain, Map, Flag, User, LogOut, Trophy } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { getLevelInfo } from "@/lib/levels";
 
 const Index = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, xp } = useAuth();
+  const lvlInfo = getLevelInfo(xp);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
@@ -15,6 +17,9 @@ const Index = () => {
           <div className="flex items-center gap-2 bg-card/85 border shadow-sm px-3 py-1.5 rounded-full text-sm backdrop-blur-sm">
             <User className="h-4 w-4 text-primary" />
             <span className="font-semibold max-w-[120px] truncate" title={user || ""}>{user}</span>
+            <span className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-xs font-extrabold border border-primary/20">
+              Lvl {lvlInfo.level}
+            </span>
             <Button
               variant="ghost"
               size="icon"
@@ -61,6 +66,48 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Player Card Section */}
+      {isAuthenticated && (
+        <section className="container mx-auto px-4 pb-8 max-w-xl animate-in fade-in slide-in-from-bottom-5 duration-500">
+          <Card className="bg-gradient-to-br from-card to-primary/5 border-primary/20 shadow-xl overflow-hidden">
+            <CardHeader className="flex flex-row items-center gap-4 pb-4 bg-primary/5">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl shadow-inner">
+                🎒
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-xl font-bold truncate">{user}</CardTitle>
+                <CardDescription className="text-sm font-semibold text-primary/80 mt-0.5">
+                  {lvlInfo.title}
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-black text-primary">Lvl {lvlInfo.level}</div>
+                <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">Aktualny Poziom</div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm font-semibold">
+                  <span className="text-muted-foreground">Doświadczenie:</span>
+                  <span>{xp} / {lvlInfo.level === 10 ? "MAX" : `${lvlInfo.nextXp} XP`}</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-3 overflow-hidden border">
+                  <div 
+                    className="bg-gradient-to-r from-primary to-accent h-full transition-all duration-500 rounded-full"
+                    style={{ width: `${lvlInfo.progress}%` }}
+                  />
+                </div>
+                {lvlInfo.level < 10 && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Brakuje Ci <strong>{lvlInfo.nextXp - xp} XP</strong> do kolejnego poziomu!
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="container mx-auto px-4 py-16">
