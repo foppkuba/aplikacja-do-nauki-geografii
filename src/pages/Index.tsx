@@ -1,11 +1,39 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Brain, Map, Flag } from "lucide-react";
+import { BookOpen, Brain, Map, Flag, User, LogOut } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const Index = () => {
+  const { user, logout, isAuthenticated } = useAuth();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      {/* Panel logowania w prawym górnym rogu */}
+      <div className="fixed top-4 right-[70px] z-50 flex items-center gap-2">
+        {isAuthenticated ? (
+          <div className="flex items-center gap-2 bg-card/85 border shadow-sm px-3 py-1.5 rounded-full text-sm backdrop-blur-sm">
+            <User className="h-4 w-4 text-primary" />
+            <span className="font-semibold max-w-[120px] truncate" title={user || ""}>{user}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              title="Wyloguj się"
+              className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <Link to="/auth">
+            <Button variant="outline" className="shadow-sm rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground transition-all duration-300 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span>Zaloguj się</span>
+            </Button>
+          </Link>
+        )}
+      </div>
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 md:py-24 text-center">
         <div className="max-w-4xl mx-auto">
