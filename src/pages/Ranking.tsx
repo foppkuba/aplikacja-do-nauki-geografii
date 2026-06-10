@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Trophy, User, Users, Calendar, Medal, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { getLevelInfo } from "@/lib/levels";
 
 interface ScoreEntry {
   id: number;
@@ -39,7 +40,7 @@ const Ranking = () => {
     if (mode) {
       const isTime = mode.endsWith("_TIME");
       const baseMode = isTime ? mode.replace("_TIME", "") : mode;
-      if (["QUIZ", "MAP", "FLAGS"].includes(baseMode)) {
+      if (["QUIZ", "MAP", "FLAGS", "XP"].includes(baseMode)) {
         setActiveGameMode(baseMode);
         setGameType(isTime ? "time" : "standard");
       }
@@ -51,6 +52,24 @@ const Ranking = () => {
     const fetchScores = async () => {
       setIsLoading(true);
       try {
+        if (activeGameMode === "XP") {
+          const response = await fetch("/api/users/leaderboard");
+          if (response.ok) {
+            const data = await response.json();
+            setScores(data.map((item: any, index: number) => ({
+              id: index,
+              username: item.username,
+              gameMode: "XP",
+              score: item.xp,
+              maxScore: 0,
+              createdAt: ""
+            })));
+          } else {
+            console.error("Błąd pobierania rankingu XP");
+          }
+          return;
+        }
+
         const modeParam = gameType === "time" ? `${activeGameMode}_TIME` : activeGameMode;
         let url = `/api/scores/leaderboard?mode=${modeParam}`;
         if (viewType === "personal" && isAuthenticated && user) {
@@ -98,8 +117,12 @@ const Ranking = () => {
 
   const handleGameModeChange = (mode: string) => {
     setActiveGameMode(mode);
-    const modeParam = gameType === "time" ? `${mode}_TIME` : mode;
-    setSearchParams({ mode: modeParam });
+    if (mode === "XP") {
+      setSearchParams({ mode: "XP" });
+    } else {
+      const modeParam = gameType === "time" ? `${mode}_TIME` : mode;
+      setSearchParams({ mode: modeParam });
+    }
   };
 
   const handleGameTypeChange = (type: "standard" | "time") => {
@@ -153,7 +176,7 @@ const Ranking = () => {
         </div>
 
         <Tabs value={activeGameMode} onValueChange={handleGameModeChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="QUIZ" className="text-sm md:text-base">
               🧠 Quiz Stolice
             </TabsTrigger>
@@ -162,6 +185,9 @@ const Ranking = () => {
             </TabsTrigger>
             <TabsTrigger value="FLAGS" className="text-sm md:text-base">
               🚩 Nauka Flag
+            </TabsTrigger>
+            <TabsTrigger value="XP" className="text-sm md:text-base">
+              🏆 Poziomy & XP
             </TabsTrigger>
           </TabsList>
 
@@ -173,54 +199,59 @@ const Ranking = () => {
                   {activeGameMode === "QUIZ" && "Quiz ze znajomości stolic"}
                   {activeGameMode === "MAP" && "Gra mapowa (lokalizacja państw)"}
                   {activeGameMode === "FLAGS" && "Rozpoznawanie flag państw"}
-                  {gameType === "time" && " (⏱️ Na Czas)"}
+                  {activeGameMode === "XP" && "Globalny ranking poziomów i punktów XP"}
+                  {gameType === "time" && activeGameMode !== "XP" && " (⏱️ Na Czas)"}
                 </CardTitle>
                 <CardDescription>
-                  Lista najlepszych wyników dla wybranego trybu
+                  {activeGameMode === "XP" 
+                    ? "Zestawienie graczy z największą liczbą punktów doświadczenia" 
+                    : "Lista najlepszych wyników dla wybranego trybu"}
                 </CardDescription>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
-                {/* Klasyczny vs Wyzwanie na czas */}
-                <div className="flex bg-muted p-1 rounded-lg">
-                  <Button
-                    variant={gameType === "standard" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => handleGameTypeChange("standard")}
-                    className="rounded-md flex items-center gap-1.5 px-3"
-                  >
-                    🎯 Klasyczny
-                  </Button>
-                  <Button
-                    variant={gameType === "time" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => handleGameTypeChange("time")}
-                    className="rounded-md flex items-center gap-1.5 px-3"
-                  >
-                    ⏱️ Na czas
-                  </Button>
-                </div>
+              {activeGameMode !== "XP" && (
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+                  {/* Klasyczny vs Wyzwanie na czas */}
+                  <div className="flex bg-muted p-1 rounded-lg">
+                    <Button
+                      variant={gameType === "standard" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleGameTypeChange("standard")}
+                      className="rounded-md flex items-center gap-1.5 px-3"
+                    >
+                      🎯 Klasyczny
+                    </Button>
+                    <Button
+                      variant={gameType === "time" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleGameTypeChange("time")}
+                      className="rounded-md flex items-center gap-1.5 px-3"
+                    >
+                      ⏱️ Na czas
+                    </Button>
+                  </div>
 
-                {/* Wszyscy vs Moje */}
-                <div className="flex bg-muted p-1 rounded-lg">
-                  <Button
-                    variant={viewType === "all" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewType("all")}
-                    className="rounded-md flex items-center gap-1.5 px-3"
-                  >
-                    <Users className="h-4 w-4" /> Wszyscy
-                  </Button>
-                  <Button
-                    variant={viewType === "personal" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewType("personal")}
-                    className="rounded-md flex items-center gap-1.5 px-3"
-                  >
-                    <User className="h-4 w-4" /> Moje Wyniki
-                  </Button>
+                  {/* Wszyscy vs Moje */}
+                  <div className="flex bg-muted p-1 rounded-lg">
+                    <Button
+                      variant={viewType === "all" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewType("all")}
+                      className="rounded-md flex items-center gap-1.5 px-3"
+                    >
+                      <Users className="h-4 w-4" /> Wszyscy
+                    </Button>
+                    <Button
+                      variant={viewType === "personal" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewType("personal")}
+                      className="rounded-md flex items-center gap-1.5 px-3"
+                    >
+                      <User className="h-4 w-4" /> Moje Wyniki
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </CardHeader>
             <CardContent>
               {viewType === "personal" && !isAuthenticated ? (
@@ -249,16 +280,31 @@ const Ranking = () => {
                       <TableRow>
                         <TableHead className="w-[80px] text-center font-bold">Miejsce</TableHead>
                         <TableHead>Gracz</TableHead>
-                        <TableHead className="text-center">Wynik</TableHead>
-                        <TableHead className="text-center">Skuteczność</TableHead>
-                        <TableHead className="hidden md:table-cell text-right">Data zapisu</TableHead>
-                        <TableHead className="w-[60px] text-right">Akcja</TableHead>
+                        {activeGameMode === "XP" ? (
+                          <>
+                            <TableHead className="text-center">Poziom</TableHead>
+                            <TableHead className="text-center">Doświadczenie (XP)</TableHead>
+                          </>
+                        ) : (
+                          <>
+                            <TableHead className="text-center">Wynik</TableHead>
+                            <TableHead className="text-center">Skuteczność</TableHead>
+                          </>
+                        )}
+                        {activeGameMode !== "XP" && (
+                          <>
+                            <TableHead className="hidden md:table-cell text-right">Data zapisu</TableHead>
+                            <TableHead className="w-[60px] text-right">Akcja</TableHead>
+                          </>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {scores.map((score, index) => {
-                        const effectiveness = (score.score / score.maxScore) * 100;
+                        const effectiveness = score.maxScore > 0 ? (score.score / score.maxScore) * 100 : 0;
                         const isTopThree = index < 3;
+                        const lvlInfo = activeGameMode === "XP" ? getLevelInfo(score.score) : null;
+                        
                         return (
                           <TableRow 
                             key={score.id} 
@@ -279,39 +325,60 @@ const Ranking = () => {
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell className="text-center font-bold">
-                              {score.score} / {score.maxScore}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                effectiveness >= 80 
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300"
-                                  : effectiveness >= 65
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
-                                  : "bg-muted text-muted-foreground"
-                              }`}>
-                                {effectiveness.toFixed(0)}%
-                              </span>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell text-right text-muted-foreground text-sm">
-                              <span className="inline-flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {formatDate(score.createdAt)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {score.username === user && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                  onClick={() => handleDeleteScore(score.id)}
-                                  title="Usuń wynik"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </TableCell>
+                            
+                            {activeGameMode === "XP" && lvlInfo ? (
+                              <>
+                                <TableCell className="text-center">
+                                  <span className="bg-primary/15 text-primary text-xs font-bold px-2 py-1 rounded-full border border-primary/20">
+                                    Lvl {lvlInfo.level} ({lvlInfo.title.split(" ")[0]})
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-center font-bold">
+                                  {score.score} XP
+                                </TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell className="text-center font-bold">
+                                  {score.score} / {score.maxScore}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                    effectiveness >= 80 
+                                      ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300"
+                                      : effectiveness >= 65
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}>
+                                    {effectiveness.toFixed(0)}%
+                                  </span>
+                                </TableCell>
+                              </>
+                            )}
+
+                            {activeGameMode !== "XP" && (
+                              <>
+                                <TableCell className="hidden md:table-cell text-right text-muted-foreground text-sm">
+                                  <span className="inline-flex items-center gap-1">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    {formatDate(score.createdAt)}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {score.username === user && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                      onClick={() => handleDeleteScore(score.id)}
+                                      title="Usuń wynik"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </>
+                            )}
                           </TableRow>
                         );
                       })}
