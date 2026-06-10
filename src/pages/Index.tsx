@@ -52,11 +52,6 @@ const Index = () => {
                 Zacznij naukę! 🚀
               </Button>
             </Link>
-            <Link to="/quiz">
-              <Button size="lg" variant="secondary" className="text-lg px-8 py-6 h-auto">
-                Zagraj w quiz 🎯
-              </Button>
-            </Link>
             <Link to="/ranking?mode=QUIZ">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6 h-auto flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-yellow-500" />
