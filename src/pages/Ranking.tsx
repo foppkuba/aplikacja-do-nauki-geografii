@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Trophy, User, Users, Calendar, Medal } from "lucide-react";
+import { ArrowLeft, Trophy, User, Users, Calendar, Medal, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 interface ScoreEntry {
   id: number;
@@ -26,6 +27,7 @@ const Ranking = () => {
   const [viewType, setViewType] = useState<"all" | "personal">("all");
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Synchronizacja stanu z adresem URL przy zmianie
   useEffect(() => {
@@ -60,7 +62,29 @@ const Ranking = () => {
     };
 
     fetchScores();
-  }, [activeGameMode, viewType, user, isAuthenticated]);
+  }, [activeGameMode, viewType, user, isAuthenticated, refreshKey]);
+
+  const handleDeleteScore = async (id: number) => {
+    if (!window.confirm("Czy na pewno chcesz usunąć ten wynik z rankingu?")) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/scores/${id}?username=${encodeURIComponent(user || "")}`, {
+        method: "DELETE"
+      });
+      if (response.ok) {
+        toast.success("Wynik został usunięty!");
+        setRefreshKey(prev => prev + 1);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.message || "Błąd podczas usuwania wyniku.");
+      }
+    } catch (error) {
+      console.error("Błąd połączenia z serwerem podczas usuwania wyniku", error);
+      toast.error("Błąd połączenia z serwerem.");
+    }
+  };
+
 
   const handleGameModeChange = (mode: string) => {
     setActiveGameMode(mode);
@@ -187,6 +211,7 @@ const Ranking = () => {
                         <TableHead className="text-center">Wynik</TableHead>
                         <TableHead className="text-center">Skuteczność</TableHead>
                         <TableHead className="hidden md:table-cell text-right">Data zapisu</TableHead>
+                        <TableHead className="w-[60px] text-right">Akcja</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -232,6 +257,19 @@ const Ranking = () => {
                                 <Calendar className="h-3.5 w-3.5" />
                                 {formatDate(score.createdAt)}
                               </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {score.username === user && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  onClick={() => handleDeleteScore(score.id)}
+                                  title="Usuń wynik"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         );

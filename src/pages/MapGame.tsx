@@ -10,6 +10,8 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { GameResult } from "@/components/GameResult";
 import { getFlagUrl, shuffleArray } from "@/lib/utils";
 import { Country } from "@/types/Country";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 interface GameCountry extends Country {
   flag: string;
@@ -30,6 +32,13 @@ const MapGame = () => {
     return formattedData.filter(country => !EXCLUDED_CODES.includes(country.code));
   }, [rawCountries]);
 
+  const { user, isAuthenticated } = useAuth();
+
+  // Stan gry
+  const [gameType, setGameType] = useState<"standard" | "learning" | null>(null);
+  const [learnedCodes, setLearnedCodes] = useState<string[]>([]);
+  const [loadingProgress, setLoadingProgress] = useState(false);
+
   const [shuffledCountries, setShuffledCountries] = useState<GameCountry[]>([]);
   const [currentCountryIndex, setCurrentCountryIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -37,24 +46,110 @@ const MapGame = () => {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
 
+  const fetchLearningProgress = async () => {
+    if (!isAuthenticated || !user) return;
+    setLoadingProgress(true);
+    try {
+      const response = await fetch(`/api/learning/progress?username=${encodeURIComponent(user)}&gameMode=MAP`);
+      if (response.ok) {
+        const data = await response.json();
+        setLearnedCodes(data);
+      }
+    } catch (e) {
+      console.error("Błąd pobierania postępu nauki", e);
+    } finally {
+      setLoadingProgress(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchLearningProgress();
+    }
+  }, [user, isAuthenticated]);
+
+  const saveProgressToBackend = async (countryCode: string) => {
+    try {
+      await fetch("/api/learning/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: user,
+          gameMode: "MAP",
+          countryCode
+        })
+      });
+    } catch (e) {
+      console.error("Błąd zapisu postępu w bazie", e);
+    }
+  };
+
   const startNewGame = React.useCallback(() => {
     if (allCountries.length === 0) return;
-    // Losujemy 10 krajów do gry
     const gameSet = shuffleArray(allCountries).slice(0, 10);
     setShuffledCountries(gameSet);
     setCurrentCountryIndex(0);
     setScore(0);
     setGameOver(false);
     setIsCorrect(null);
+    setGameType("standard");
+    setGameStarted(true);
   }, [allCountries]);
 
-  // 1. Inicjalizacja gry po pobraniu danych
-  useEffect(() => {
-    if (allCountries.length > 0 && !gameStarted) {
-      startNewGame();
+  const startLearningGame = React.useCallback(async (latestLearnedCodes?: string[]) => {
+    const activeLearned = latestLearnedCodes !== undefined ? latestLearnedCodes : learnedCodes;
+    if (allCountries.length === 0) return;
+
+    const unlearned = allCountries.filter(c => !activeLearned.includes(c.code));
+    
+    if (unlearned.length === 0) {
+      setShuffledCountries([]);
+      setCurrentCountryIndex(0);
+      setScore(0);
+      setGameOver(false);
+      setIsCorrect(null);
+      setGameType("learning");
       setGameStarted(true);
+      return;
     }
-  }, [allCountries, gameStarted, startNewGame]);
+
+    const shuffledUnlearned = shuffleArray(unlearned);
+    const gameCount = Math.min(10, shuffledUnlearned.length);
+    const targetSet = shuffledUnlearned.slice(0, gameCount);
+
+    setShuffledCountries(targetSet);
+    setCurrentCountryIndex(0);
+    setScore(0);
+    setGameOver(false);
+    setIsCorrect(null);
+    setGameType("learning");
+    setGameStarted(true);
+  }, [allCountries, learnedCodes]);
+
+  const handleResetProgress = async () => {
+    if (!window.confirm("Czy na pewno chcesz zresetować cały postęp nauki dla tego trybu?")) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/learning/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: user,
+          gameMode: "MAP"
+        })
+      });
+      if (response.ok) {
+        toast.success("Zresetowano postęp nauki!");
+        setLearnedCodes([]);
+        setGameStarted(false);
+        setGameType(null);
+      }
+    } catch (e) {
+      console.error("Błąd podczas resetowania postępu", e);
+      toast.error("Błąd połączenia z serwerem.");
+    }
+  };
 
   const handleRestart = () => {
     startNewGame();
@@ -72,6 +167,14 @@ const MapGame = () => {
     if (clickedCountryName === currentCountry.name) {
       setIsCorrect(true);
       setScore(score + 1);
+      if (gameType === "learning" && isAuthenticated && user) {
+        const countryCode = currentCountry.code;
+        saveProgressToBackend(countryCode);
+        setLearnedCodes(prev => {
+          if (prev.includes(countryCode)) return prev;
+          return [...prev, countryCode];
+        });
+      }
     } else {
       setIsCorrect(false);
     }
@@ -87,17 +190,173 @@ const MapGame = () => {
   };
 
   // --- EKRAN ŁADOWANIA ---
-  if (isLoading || !gameStarted) {
+  if (isLoading) {
     return <LoadingScreen />;
   }
 
-  // --- EKRAN KONIEC GRY ---
+  // --- UI: Wybór Trybu ---
+  if (gameType === null) {
+    const progressPercent = allCountries.length > 0 ? (learnedCodes.length / allCountries.length) * 100 : 0;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 md:p-8 flex items-center justify-center">
+        <Card className="max-w-2xl w-full shadow-2xl border-border/50 overflow-hidden">
+          <div className="relative p-6 md:p-8 bg-gradient-to-r from-primary/20 to-accent/20 border-b">
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="absolute top-4 left-4">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Menu główne
+              </Button>
+            </Link>
+            <div className="text-center pt-6 pb-2">
+              <Trophy className="h-12 w-12 text-yellow-500 mx-auto mb-2 animate-bounce" />
+              <h1 className="text-3xl font-extrabold">Gra Mapowa 🗺️</h1>
+              <p className="text-muted-foreground mt-1">Wybierz sposób rozgrywki</p>
+            </div>
+          </div>
+          <div className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
+            {/* Tryb Klasyczny */}
+            <Card className="flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm">
+              <div className="p-6 pb-0">
+                <h3 className="text-xl font-bold mb-2">Tryb Klasyczny 🎯</h3>
+                <p className="text-sm text-muted-foreground">
+                  Zlokalizuj 10 losowych krajów na mapie Europy. Rywalizuj w tabeli wyników!
+                </p>
+              </div>
+              <div className="p-6">
+                <Button 
+                  onClick={startNewGame}
+                  className="w-full"
+                >
+                  Graj Klasycznie 🚀
+                </Button>
+              </div>
+            </Card>
+
+            {/* Tryb Nauki */}
+            <Card className="flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm relative">
+              {!isAuthenticated && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-[1px] flex flex-col items-center justify-center p-6 text-center z-10 rounded-lg">
+                  <span className="text-3xl mb-2">🔒</span>
+                  <h4 className="font-bold text-foreground">Tryb Nauki zablokowany</h4>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Musisz się zalogować, aby zapisywać postęp nauki lokalizacji krajów.
+                  </p>
+                  <Link to="/auth">
+                    <Button size="sm">Zaloguj się teraz</Button>
+                  </Link>
+                </div>
+              )}
+              <div className="p-6 pb-0">
+                <h3 className="text-xl font-bold mb-2">Tryb Nauki 📖</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Ucz się bez limitu! Wskazuj na mapie kraje, których jeszcze nie znasz. Twój postęp jest stale zapisywany.
+                </p>
+                {isAuthenticated && (
+                  <div className="space-y-1.5 mt-2 bg-muted p-3 rounded-lg">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span>Postęp nauki:</span>
+                      <span>{learnedCodes.length} / {allCountries.length} krajów</span>
+                    </div>
+                    <Progress value={progressPercent} className="h-1.5" />
+                  </div>
+                )}
+              </div>
+              <div className="p-6 flex flex-col gap-2">
+                <Button 
+                  onClick={() => startLearningGame()}
+                  className="w-full"
+                  disabled={loadingProgress}
+                >
+                  {learnedCodes.length > 0 ? "Kontynuuj naukę 📖" : "Rozpocznij naukę 📖"}
+                </Button>
+                {isAuthenticated && learnedCodes.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleResetProgress} className="text-destructive hover:bg-destructive/10">
+                    Resetuj postęp 🔄
+                  </Button>
+                )}
+              </div>
+            </Card>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // --- UI: Wszystko opanowane w trybie nauki ---
+  if (gameType === "learning" && shuffledCountries.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 md:p-8 flex items-center justify-center">
+        <Card className="max-w-md w-full p-6 text-center shadow-xl border-border/50">
+          <div className="text-6xl mb-4">🎉</div>
+          <CardTitle className="text-3xl font-bold mb-2">Gratulacje! 🥳</CardTitle>
+          <p className="text-muted-foreground mb-6">
+            Opanowałeś już wszystkie kraje ({allCountries.length}) na mapie! Twój postęp wynosi 100%.
+          </p>
+          <div className="space-y-3">
+            <Button onClick={handleResetProgress} className="w-full text-lg py-6 flex items-center justify-center gap-2">
+              Zresetuj postęp i zacznij od nowa 🔄
+            </Button>
+            <Button variant="ghost" onClick={() => { setGameType(null); setGameStarted(false); }} className="w-full">
+              Wróć do wyboru trybu
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // --- EKRAN KONIEC GRY W TRYBIE NAUKI ---
+  if (gameType === "learning" && gameOver) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 md:p-8 flex items-center justify-center">
+        <Card className="max-w-md w-full p-6 text-center shadow-xl border-border/50">
+          <div className="text-6xl mb-4">📖</div>
+          <CardTitle className="text-3xl font-bold mb-2">Koniec rundy nauki!</CardTitle>
+          <p className="text-muted-foreground mb-4">
+            W tej rundzie poprawnie wskazałeś <span className="font-bold text-foreground">{score} z {shuffledCountries.length}</span> krajów.
+          </p>
+          <div className="bg-muted p-4 rounded-xl mb-6">
+            <p className="text-sm text-muted-foreground mb-2">Twój całkowity postęp nauki mapy:</p>
+            <div className="flex justify-between text-xs font-semibold mb-1">
+              <span>Opanowane kraje</span>
+              <span>{learnedCodes.length} z {allCountries.length}</span>
+            </div>
+            <Progress value={(learnedCodes.length / allCountries.length) * 100} className="h-2" />
+          </div>
+          <div className="space-y-3">
+            {learnedCodes.length < allCountries.length ? (
+              <Button 
+                onClick={async () => {
+                  await fetchLearningProgress();
+                  startLearningGame();
+                }} 
+                className="w-full text-lg py-6"
+              >
+                Ucz się dalej 🚀
+              </Button>
+            ) : (
+              <div className="p-3 bg-green-500/10 text-green-600 rounded-lg text-sm font-semibold">
+                🎉 Gratulacje! Znasz już wszystkie kraje na mapie!
+              </div>
+            )}
+            <Button variant="outline" onClick={handleResetProgress} className="w-full text-destructive hover:bg-destructive/10">
+              Resetuj postęp nauki 🔄
+            </Button>
+            <Button variant="ghost" onClick={() => { setGameType(null); setGameStarted(false); }} className="w-full">
+              Wróć do wyboru trybu
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // --- EKRAN KONIEC GRY KLASYCZNEJ ---
   if (gameOver) {
     return (
       <GameResult 
         score={score} 
         totalQuestions={shuffledCountries.length} 
-        onRestart={handleRestart} 
+        onRestart={startNewGame} 
         emojiThresholds={{ low: "📍", medium: "🗺️", high: "🌍" }}
         gameMode="MAP"
       />
@@ -110,12 +369,16 @@ const MapGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary/10 via-background to-primary/10 p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <Link to="/">
-          <Button variant="outline" className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Strona główna
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="outline" onClick={() => { setGameType(null); setGameStarted(false); }}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Zmień tryb
           </Button>
-        </Link>
+          {gameType === "learning" && (
+            <Button variant="destructive" size="sm" onClick={handleResetProgress}>
+              Resetuj progres 🔄
+            </Button>
+          )}
+        </div>
 
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
