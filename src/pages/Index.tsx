@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Brain, Map, Flag, User, LogOut } from "lucide-react";
+import { BookOpen, Brain, Map, Flag, User, LogOut, Trophy } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const Index = () => {
@@ -53,8 +53,14 @@ const Index = () => {
               </Button>
             </Link>
             <Link to="/quiz">
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6 h-auto">
+              <Button size="lg" variant="secondary" className="text-lg px-8 py-6 h-auto">
                 Zagraj w quiz 🎯
+              </Button>
+            </Link>
+            <Link to="/ranking?mode=QUIZ">
+              <Button size="lg" variant="outline" className="text-lg px-8 py-6 h-auto flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                Rankingi 🏆
               </Button>
             </Link>
           </div>
@@ -64,125 +70,168 @@ const Index = () => {
       {/* Features Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-          <Link to="/learn" className="block group">
-            <Card className="h-full transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-105 cursor-pointer">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary/50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <BookOpen className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl">Biblioteka Krajów</CardTitle>
-                <CardDescription className="text-base">
-                  Poznaj 40 krajów europejskich
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start">
-                    <span className="mr-2">🌟</span>
-                    <span>Interaktywne fiszki z krajami</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">🏛️</span>
-                    <span>Stolice i ciekawe fakty</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">📊</span>
-                    <span>Informacje o populacji i powierzchni</span>
-                  </li>
-                </ul>
-              </CardContent>
+          <div className="block group">
+            <Card className="h-full flex flex-col justify-between transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-[1.02]">
+              <div>
+                <CardHeader className="text-center pb-4">
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary/50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <BookOpen className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-2xl">Biblioteka Krajów</CardTitle>
+                  <CardDescription className="text-base">
+                    Poznaj 40 krajów europejskich
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start">
+                      <span className="mr-2">🌟</span>
+                      <span>Interaktywne fiszki z krajami</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">🏛️</span>
+                      <span>Stolice i ciekawe fakty</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">📊</span>
+                      <span>Informacje o populacji i powierzchni</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </div>
+              <div className="p-6 pt-0 mt-auto">
+                <Link to="/learn" className="block w-full">
+                  <Button className="w-full">Otwórz bibliotekę 📖</Button>
+                </Link>
+              </div>
             </Card>
-          </Link>
+          </div>
 
-          <Link to="/quiz" className="block group">
-            <Card className="h-full transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-105 cursor-pointer">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-secondary to-secondary/50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Brain className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl">Quiz Geograficzny</CardTitle>
-                <CardDescription className="text-base">
-                  Sprawdź swoją wiedzę!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start">
-                    <span className="mr-2">❓</span>
-                    <span>10 pytań o stolice krajów</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">🎯</span>
-                    <span>Pytania wielokrotnego wyboru</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">🏆</span>
-                    <span>Zdobywaj punkty i poprawiaj rekordy</span>
-                  </li>
-                </ul>
-              </CardContent>
+          <div className="block group">
+            <Card className="h-full flex flex-col justify-between transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-[1.02]">
+              <div>
+                <CardHeader className="text-center pb-4">
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-secondary to-secondary/50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <Brain className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-2xl">Quiz Geograficzny</CardTitle>
+                  <CardDescription className="text-base">
+                    Sprawdź swoją wiedzę!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start">
+                      <span className="mr-2">❓</span>
+                      <span>10 pytań o stolice krajów</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">🎯</span>
+                      <span>Pytania wielokrotnego wyboru</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">🏆</span>
+                      <span>Zdobywaj punkty i poprawiaj rekordy</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </div>
+              <div className="p-6 pt-0 flex gap-2 mt-auto">
+                <Link to="/quiz" className="flex-1">
+                  <Button className="w-full">Zagraj 🎯</Button>
+                </Link>
+                <Link to="/ranking?mode=QUIZ">
+                  <Button variant="outline" size="icon" title="Ranking">
+                    <Trophy className="h-4 w-4 text-yellow-500" />
+                  </Button>
+                </Link>
+              </div>
             </Card>
-          </Link>
+          </div>
 
-          <Link to="/map" className="block group">
-            <Card className="h-full transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-105 cursor-pointer">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-accent to-accent/50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Map className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl">Gra Mapowa</CardTitle>
-                <CardDescription className="text-base">
-                  Znajdź kraje na mapie!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start">
-                    <span className="mr-2">🗺️</span>
-                    <span>Interaktywna mapa Europy</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">📍</span>
-                    <span>Kliknij na właściwy kraj</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">🎮</span>
-                    <span>Ucz się geografii poprzez zabawę</span>
-                  </li>
-                </ul>
-              </CardContent>
+          <div className="block group">
+            <Card className="h-full flex flex-col justify-between transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-[1.02]">
+              <div>
+                <CardHeader className="text-center pb-4">
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-accent to-accent/50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <Map className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-2xl">Gra Mapowa</CardTitle>
+                  <CardDescription className="text-base">
+                    Znajdź kraje na mapie!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start">
+                      <span className="mr-2">🗺️</span>
+                      <span>Interaktywna mapa Europy</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">📍</span>
+                      <span>Kliknij na właściwy kraj</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">🎮</span>
+                      <span>Ucz się geografii poprzez zabawę</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </div>
+              <div className="p-6 pt-0 flex gap-2 mt-auto">
+                <Link to="/map" className="flex-1">
+                  <Button className="w-full">Zagraj 🗺️</Button>
+                </Link>
+                <Link to="/ranking?mode=MAP">
+                  <Button variant="outline" size="icon" title="Ranking">
+                    <Trophy className="h-4 w-4 text-yellow-500" />
+                  </Button>
+                </Link>
+              </div>
             </Card>
-          </Link>
+          </div>
 
-          <Link to="/flags" className="block group">
-            <Card className="h-full transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-105 cursor-pointer">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-300 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Flag className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl">Nauka Flag</CardTitle>
-                <CardDescription className="text-base">
-                  Poznaj flagi krajów!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start">
-                    <span className="mr-2">🚩</span>
-                    <span>Zgaduj nazwy krajów po flagach</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">🎯</span>
-                    <span>4 odpowiedzi do wyboru</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">🏅</span>
-                    <span>Zdobywaj punkty za prawidłowe odpowiedzi</span>
-                  </li>
-                </ul>
-              </CardContent>
+          <div className="block group">
+            <Card className="h-full flex flex-col justify-between transition-all duration-300 hover:shadow-[var(--shadow-hover)] hover:scale-[1.02]">
+              <div>
+                <CardHeader className="text-center pb-4">
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-300 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <Flag className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-2xl">Nauka Flag</CardTitle>
+                  <CardDescription className="text-base">
+                    Poznaj flagi krajów!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start">
+                      <span className="mr-2">🚩</span>
+                      <span>Zgaduj nazwy krajów po flagach</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">🎯</span>
+                      <span>4 odpowiedzi do wyboru</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">🏅</span>
+                      <span>Zdobywaj punkty za prawidłowe odpowiedzi</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </div>
+              <div className="p-6 pt-0 flex gap-2 mt-auto">
+                <Link to="/flags" className="flex-1">
+                  <Button className="w-full">Zagraj 🚩</Button>
+                </Link>
+                <Link to="/ranking?mode=FLAGS">
+                  <Button variant="outline" size="icon" title="Ranking">
+                    <Trophy className="h-4 w-4 text-yellow-500" />
+                  </Button>
+                </Link>
+              </div>
             </Card>
-          </Link>
+          </div>
         </div>
       </section>
 

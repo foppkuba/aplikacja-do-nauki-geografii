@@ -12,6 +12,7 @@ import Quiz from "./pages/Quiz";
 import MapGame from "./pages/MapGame";
 import Flags from "./pages/Flags";
 import Auth from "./pages/Auth";
+import Ranking from "./pages/Ranking";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/map" element={<MapGame />} />
             <Route path="/flags" element={<Flags />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/ranking" element={<Ranking />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

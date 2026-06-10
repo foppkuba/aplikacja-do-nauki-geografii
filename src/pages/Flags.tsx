@@ -121,6 +121,7 @@ const Flags = () => {
           medium: "Świetnie! Prawie wszystkie flagi rozpoznane!",
           high: "Gratulacje! Znasz perfekcyjnie wszystkie flagi!"
         }}
+        gameMode="FLAGS"
       />
     );
   }

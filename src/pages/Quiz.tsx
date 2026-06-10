@@ -121,6 +121,7 @@ const Quiz = () => {
         score={score} 
         totalQuestions={questions.length} 
         onRestart={startNewGame} 
+        gameMode="QUIZ"
       />
     );
   }

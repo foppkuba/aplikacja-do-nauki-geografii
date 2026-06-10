@@ -99,6 +99,7 @@ const MapGame = () => {
         totalQuestions={shuffledCountries.length} 
         onRestart={handleRestart} 
         emojiThresholds={{ low: "📍", medium: "🗺️", high: "🌍" }}
+        gameMode="MAP"
       />
     );
   }
