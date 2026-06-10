@@ -35,9 +35,12 @@ const MapGame = () => {
   const { user, isAuthenticated } = useAuth();
 
   // Stan gry
-  const [gameType, setGameType] = useState<"standard" | "learning" | null>(null);
+  const [gameType, setGameType] = useState<"standard" | "learning" | "time" | null>(null);
   const [learnedCodes, setLearnedCodes] = useState<string[]>([]);
   const [loadingProgress, setLoadingProgress] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [attempted, setAttempted] = useState(0);
+  const [timeGameOver, setTimeGameOver] = useState(false);
 
   const [shuffledCountries, setShuffledCountries] = useState<GameCountry[]>([]);
   const [currentCountryIndex, setCurrentCountryIndex] = useState(0);
@@ -45,6 +48,24 @@ const MapGame = () => {
   const [gameOver, setGameOver] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
+
+  // Zegar dla trybu na czas
+  useEffect(() => {
+    if (gameType !== "time" || !gameStarted || timeGameOver) return;
+    
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setTimeGameOver(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameType, gameStarted, timeGameOver]);
 
   const fetchLearningProgress = async () => {
     if (!isAuthenticated || !user) return;
@@ -90,9 +111,26 @@ const MapGame = () => {
     setShuffledCountries(gameSet);
     setCurrentCountryIndex(0);
     setScore(0);
+    setAttempted(0);
+    setTimeGameOver(false);
     setGameOver(false);
     setIsCorrect(null);
     setGameType("standard");
+    setGameStarted(true);
+  }, [allCountries]);
+
+  const startTimeAttackGame = React.useCallback(() => {
+    if (allCountries.length === 0) return;
+    const gameSet = shuffleArray(allCountries);
+    setShuffledCountries(gameSet);
+    setCurrentCountryIndex(0);
+    setScore(0);
+    setAttempted(0);
+    setTimeLeft(60);
+    setTimeGameOver(false);
+    setGameOver(false);
+    setIsCorrect(null);
+    setGameType("time");
     setGameStarted(true);
   }, [allCountries]);
 
@@ -164,6 +202,8 @@ const MapGame = () => {
   const handleCountryClick = (clickedCountryName: string) => {
     if (isCorrect !== null) return;
 
+    setAttempted(prev => prev + 1);
+
     if (clickedCountryName === currentCountry.name) {
       setIsCorrect(true);
       setScore(score + 1);
@@ -174,9 +214,20 @@ const MapGame = () => {
           if (prev.includes(countryCode)) return prev;
           return [...prev, countryCode];
         });
+      } else if (gameType === "time") {
+        setTimeLeft(t => t + 2);
       }
     } else {
       setIsCorrect(false);
+      if (gameType === "time") {
+        setTimeLeft(t => {
+          const nextTime = Math.max(0, t - 3);
+          if (nextTime === 0) {
+            setTimeGameOver(true);
+          }
+          return nextTime;
+        });
+      }
     }
   };
 
@@ -185,7 +236,14 @@ const MapGame = () => {
       setCurrentCountryIndex(currentCountryIndex + 1);
       setIsCorrect(null);
     } else {
-      setGameOver(true);
+      if (gameType === "time") {
+        const gameSet = shuffleArray(allCountries);
+        setShuffledCountries(prev => [...prev, ...gameSet]);
+        setCurrentCountryIndex(currentCountryIndex + 1);
+        setIsCorrect(null);
+      } else {
+        setGameOver(true);
+      }
     }
   };
 
@@ -199,7 +257,7 @@ const MapGame = () => {
     const progressPercent = allCountries.length > 0 ? (learnedCodes.length / allCountries.length) * 100 : 0;
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 md:p-8 flex items-center justify-center">
-        <Card className="max-w-2xl w-full shadow-2xl border-border/50 overflow-hidden">
+        <Card className="max-w-4xl w-full shadow-2xl border-border/50 overflow-hidden">
           <div className="relative p-6 md:p-8 bg-gradient-to-r from-primary/20 to-accent/20 border-b">
             <Link to="/">
               <Button variant="ghost" size="sm" className="absolute top-4 left-4">
@@ -212,7 +270,7 @@ const MapGame = () => {
               <p className="text-muted-foreground mt-1">Wybierz sposób rozgrywki</p>
             </div>
           </div>
-          <div className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
+          <div className="p-6 md:p-8 grid md:grid-cols-3 gap-6">
             {/* Tryb Klasyczny */}
             <Card className="flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm">
               <div className="p-6 pb-0">
@@ -273,6 +331,24 @@ const MapGame = () => {
                     Resetuj postęp 🔄
                   </Button>
                 )}
+              </div>
+            </Card>
+
+            {/* Wyzwanie na Czas */}
+            <Card className="flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm">
+              <div className="p-6 pb-0">
+                <h3 className="text-xl font-bold mb-2">Wyzwanie na Czas ⏱️</h3>
+                <p className="text-sm text-muted-foreground">
+                  Wskazuj kraje na mapie jak najszybciej! +2s za poprawny wybór, -3s za błędny. Rywalizuj w osobnym rankingu!
+                </p>
+              </div>
+              <div className="p-6">
+                <Button 
+                  onClick={startTimeAttackGame}
+                  className="w-full"
+                >
+                  Rozpocznij Wyzwanie 🚀
+                </Button>
               </div>
             </Card>
           </div>
@@ -350,15 +426,15 @@ const MapGame = () => {
     );
   }
 
-  // --- EKRAN KONIEC GRY KLASYCZNEJ ---
-  if (gameOver) {
+  // --- EKRAN KONIEC GRY KLASYCZNEJ LUB NA CZAS ---
+  if (gameOver || timeGameOver) {
     return (
       <GameResult 
         score={score} 
-        totalQuestions={shuffledCountries.length} 
-        onRestart={startNewGame} 
+        totalQuestions={gameType === "time" ? Math.max(1, attempted) : shuffledCountries.length} 
+        onRestart={gameType === "time" ? startTimeAttackGame : startNewGame} 
         emojiThresholds={{ low: "📍", medium: "🗺️", high: "🌍" }}
-        gameMode="MAP"
+        gameMode={gameType === "time" ? "MAP_TIME" : "MAP"}
       />
     );
   }
@@ -382,15 +458,28 @@ const MapGame = () => {
 
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium">
-              Pytanie {currentCountryIndex + 1} z {shuffledCountries.length}
-            </span>
-            <span className="text-sm font-medium flex items-center">
-              <Trophy className="mr-1 h-4 w-4 text-accent" />
-              Wynik: {score}
-            </span>
+            {gameType === "time" ? (
+              <>
+                <span className="text-sm font-bold text-destructive animate-pulse flex items-center gap-1">
+                  ⏱️ Czas: {timeLeft}s
+                </span>
+                <span className="text-sm font-bold flex items-center">
+                  🎯 Wynik: {score} / {attempted}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-medium">
+                  Pytanie {currentCountryIndex + 1} z {shuffledCountries.length}
+                </span>
+                <span className="text-sm font-medium flex items-center">
+                  <Trophy className="mr-1 h-4 w-4 text-accent" />
+                  Wynik: {score}
+                </span>
+              </>
+            )}
           </div>
-          <Progress value={progress} className="h-2" />
+          {gameType !== "time" && <Progress value={progress} className="h-2" />}
         </div>
 
         <Card className="mb-6">
@@ -434,7 +523,7 @@ const MapGame = () => {
 
         {isCorrect !== null && (
           <Button onClick={handleNext} size="lg" className="w-full">
-            {currentCountryIndex < shuffledCountries.length - 1 ? "Następny kraj" : "Zobacz wynik"}
+            {gameType === "time" ? "Następny kraj" : (currentCountryIndex < shuffledCountries.length - 1 ? "Następny kraj" : "Zobacz wynik")}
           </Button>
         )}
       </div>

@@ -21,9 +21,13 @@ const Ranking = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuth();
 
-  // Domyślny tryb gry z parametrów URL (QUIZ, MAP, FLAGS)
+  // Domyślny tryb gry z parametrów URL (QUIZ, MAP, FLAGS z opcjonalnym _TIME)
   const urlMode = searchParams.get("mode") || "QUIZ";
-  const [activeGameMode, setActiveGameMode] = useState<string>(urlMode);
+  const initialIsTime = urlMode.endsWith("_TIME");
+  const initialBaseMode = initialIsTime ? urlMode.replace("_TIME", "") : urlMode;
+
+  const [activeGameMode, setActiveGameMode] = useState<string>(initialBaseMode);
+  const [gameType, setGameType] = useState<"standard" | "time">(initialIsTime ? "time" : "standard");
   const [viewType, setViewType] = useState<"all" | "personal">("all");
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,8 +36,13 @@ const Ranking = () => {
   // Synchronizacja stanu z adresem URL przy zmianie
   useEffect(() => {
     const mode = searchParams.get("mode");
-    if (mode && ["QUIZ", "MAP", "FLAGS"].includes(mode)) {
-      setActiveGameMode(mode);
+    if (mode) {
+      const isTime = mode.endsWith("_TIME");
+      const baseMode = isTime ? mode.replace("_TIME", "") : mode;
+      if (["QUIZ", "MAP", "FLAGS"].includes(baseMode)) {
+        setActiveGameMode(baseMode);
+        setGameType(isTime ? "time" : "standard");
+      }
     }
   }, [searchParams]);
 
@@ -42,7 +51,8 @@ const Ranking = () => {
     const fetchScores = async () => {
       setIsLoading(true);
       try {
-        let url = `/api/scores/leaderboard?mode=${activeGameMode}`;
+        const modeParam = gameType === "time" ? `${activeGameMode}_TIME` : activeGameMode;
+        let url = `/api/scores/leaderboard?mode=${modeParam}`;
         if (viewType === "personal" && isAuthenticated && user) {
           url += `&username=${encodeURIComponent(user)}`;
         }
@@ -62,7 +72,7 @@ const Ranking = () => {
     };
 
     fetchScores();
-  }, [activeGameMode, viewType, user, isAuthenticated, refreshKey]);
+  }, [activeGameMode, gameType, viewType, user, isAuthenticated, refreshKey]);
 
   const handleDeleteScore = async (id: number) => {
     if (!window.confirm("Czy na pewno chcesz usunąć ten wynik z rankingu?")) {
@@ -88,7 +98,14 @@ const Ranking = () => {
 
   const handleGameModeChange = (mode: string) => {
     setActiveGameMode(mode);
-    setSearchParams({ mode });
+    const modeParam = gameType === "time" ? `${mode}_TIME` : mode;
+    setSearchParams({ mode: modeParam });
+  };
+
+  const handleGameTypeChange = (type: "standard" | "time") => {
+    setGameType(type);
+    const modeParam = type === "time" ? `${activeGameMode}_TIME` : activeGameMode;
+    setSearchParams({ mode: modeParam });
   };
 
   const formatDate = (dateString: string) => {
@@ -156,29 +173,53 @@ const Ranking = () => {
                   {activeGameMode === "QUIZ" && "Quiz ze znajomości stolic"}
                   {activeGameMode === "MAP" && "Gra mapowa (lokalizacja państw)"}
                   {activeGameMode === "FLAGS" && "Rozpoznawanie flag państw"}
+                  {gameType === "time" && " (⏱️ Na Czas)"}
                 </CardTitle>
                 <CardDescription>
                   Lista najlepszych wyników dla wybranego trybu
                 </CardDescription>
               </div>
 
-              <div className="flex bg-muted p-1 rounded-lg self-start sm:self-center">
-                <Button
-                  variant={viewType === "all" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewType("all")}
-                  className="rounded-md flex items-center gap-1.5 px-3"
-                >
-                  <Users className="h-4 w-4" /> Wszyscy
-                </Button>
-                <Button
-                  variant={viewType === "personal" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewType("personal")}
-                  className="rounded-md flex items-center gap-1.5 px-3"
-                >
-                  <User className="h-4 w-4" /> Moje Wyniki
-                </Button>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+                {/* Klasyczny vs Wyzwanie na czas */}
+                <div className="flex bg-muted p-1 rounded-lg">
+                  <Button
+                    variant={gameType === "standard" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleGameTypeChange("standard")}
+                    className="rounded-md flex items-center gap-1.5 px-3"
+                  >
+                    🎯 Klasyczny
+                  </Button>
+                  <Button
+                    variant={gameType === "time" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleGameTypeChange("time")}
+                    className="rounded-md flex items-center gap-1.5 px-3"
+                  >
+                    ⏱️ Na czas
+                  </Button>
+                </div>
+
+                {/* Wszyscy vs Moje */}
+                <div className="flex bg-muted p-1 rounded-lg">
+                  <Button
+                    variant={viewType === "all" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewType("all")}
+                    className="rounded-md flex items-center gap-1.5 px-3"
+                  >
+                    <Users className="h-4 w-4" /> Wszyscy
+                  </Button>
+                  <Button
+                    variant={viewType === "personal" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewType("personal")}
+                    className="rounded-md flex items-center gap-1.5 px-3"
+                  >
+                    <User className="h-4 w-4" /> Moje Wyniki
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

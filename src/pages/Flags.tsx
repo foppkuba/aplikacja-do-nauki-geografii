@@ -19,9 +19,12 @@ const Flags = () => {
   const { user, isAuthenticated } = useAuth();
 
   // Stan gry
-  const [gameType, setGameType] = useState<"standard" | "learning" | null>(null);
+  const [gameType, setGameType] = useState<"standard" | "learning" | "time" | null>(null);
   const [learnedCodes, setLearnedCodes] = useState<string[]>([]);
   const [loadingProgress, setLoadingProgress] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [attempted, setAttempted] = useState(0);
+  const [timeGameOver, setTimeGameOver] = useState(false);
 
   const [gameCountries, setGameCountries] = useState<Country[]>([]);
   const [gameStarted, setGameStarted] = useState(false);
@@ -31,6 +34,24 @@ const Flags = () => {
   const [showResult, setShowResult] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answeredQuestions, setAnsweredQuestions] = useState(0);
+
+  // Zegar dla trybu na czas
+  useEffect(() => {
+    if (gameType !== "time" || !gameStarted || timeGameOver) return;
+    
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setTimeGameOver(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameType, gameStarted, timeGameOver]);
 
   const fetchLearningProgress = async () => {
     if (!isAuthenticated || !user) return;
@@ -76,10 +97,28 @@ const Flags = () => {
     setGameCountries(gameSet);
     setCurrentIndex(0);
     setScore(0);
+    setAttempted(0);
+    setTimeGameOver(false);
     setShowResult(false);
     setSelectedAnswer(null);
     setAnsweredQuestions(0);
     setGameType("standard");
+    setGameStarted(true);
+  }, [allCountries]);
+
+  const startTimeAttackGame = React.useCallback(() => {
+    if (allCountries.length === 0) return;
+    const gameSet = shuffleArray(allCountries);
+    setGameCountries(gameSet);
+    setCurrentIndex(0);
+    setScore(0);
+    setAttempted(0);
+    setTimeLeft(60);
+    setTimeGameOver(false);
+    setShowResult(false);
+    setSelectedAnswer(null);
+    setAnsweredQuestions(0);
+    setGameType("time");
     setGameStarted(true);
   }, [allCountries]);
 
@@ -168,6 +207,7 @@ const Flags = () => {
     setSelectedAnswer(answer);
     setShowResult(true);
     setAnsweredQuestions(prev => prev + 1);
+    setAttempted(prev => prev + 1);
     
     if (answer === currentCountry.name) {
       setScore(prev => prev + 1);
@@ -177,6 +217,18 @@ const Flags = () => {
         setLearnedCodes(prev => {
           if (prev.includes(countryCode)) return prev;
           return [...prev, countryCode];
+        });
+      } else if (gameType === "time") {
+        setTimeLeft(t => t + 2);
+      }
+    } else {
+      if (gameType === "time") {
+        setTimeLeft(t => {
+          const nextTime = Math.max(0, t - 3);
+          if (nextTime === 0) {
+            setTimeGameOver(true);
+          }
+          return nextTime;
         });
       }
     }
@@ -188,7 +240,15 @@ const Flags = () => {
       setShowResult(false);
       setSelectedAnswer(null);
     } else {
-      setShowResult(true);
+      if (gameType === "time") {
+        const gameSet = shuffleArray(allCountries);
+        setGameCountries(prev => [...prev, ...gameSet]);
+        setCurrentIndex(prev => prev + 1);
+        setShowResult(false);
+        setSelectedAnswer(null);
+      } else {
+        setShowResult(true);
+      }
     }
   };
 
@@ -202,7 +262,7 @@ const Flags = () => {
     const progressPercent = allCountries.length > 0 ? (learnedCodes.length / allCountries.length) * 100 : 0;
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 md:p-8 flex items-center justify-center">
-        <Card className="max-w-2xl w-full shadow-2xl border-border/50 overflow-hidden">
+        <Card className="max-w-4xl w-full shadow-2xl border-border/50 overflow-hidden">
           <div className="relative p-6 md:p-8 bg-gradient-to-r from-primary/20 to-accent/20 border-b">
             <Button variant="ghost" size="sm" className="absolute top-4 left-4" onClick={() => navigate("/")}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Menu główne
@@ -213,7 +273,7 @@ const Flags = () => {
               <p className="text-muted-foreground mt-1">Wybierz sposób rozgrywki</p>
             </div>
           </div>
-          <div className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
+          <div className="p-6 md:p-8 grid md:grid-cols-3 gap-6">
             {/* Tryb Klasyczny */}
             <Card className="flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm">
               <div className="p-6 pb-0">
@@ -272,6 +332,24 @@ const Flags = () => {
                     Resetuj postęp 🔄
                   </Button>
                 )}
+              </div>
+            </Card>
+
+            {/* Wyzwanie na Czas */}
+            <Card className="flex flex-col justify-between hover:border-primary/50 transition-all duration-300 shadow-sm">
+              <div className="p-6 pb-0">
+                <h3 className="text-xl font-bold mb-2">Wyzwanie na Czas ⏱️</h3>
+                <p className="text-sm text-muted-foreground">
+                  Rozpoznaj jak najwięcej flag zanim skończy się czas! +2s za poprawną odpowiedź, -3s za błędną. Rywalizuj w osobnym rankingu!
+                </p>
+              </div>
+              <div className="p-6">
+                <Button 
+                  onClick={startTimeAttackGame}
+                  className="w-full"
+                >
+                  Rozpocznij Wyzwanie 🚀
+                </Button>
               </div>
             </Card>
           </div>
@@ -362,20 +440,20 @@ const Flags = () => {
     );
   }
 
-  // --- EKRAN WYNIKU KLASYCZNEGO ---
-  if (answeredQuestions === gameCountries.length && gameCountries.length > 0) {
+  // --- EKRAN WYNIKU ---
+  if ((gameType === "time" ? timeGameOver : answeredQuestions === gameCountries.length) && gameCountries.length > 0) {
     return (
       <GameResult 
         score={score} 
-        totalQuestions={gameCountries.length} 
-        onRestart={startNewGame} 
+        totalQuestions={gameType === "time" ? Math.max(1, attempted) : gameCountries.length} 
+        onRestart={gameType === "time" ? startTimeAttackGame : startNewGame} 
         emojiThresholds={{ low: "🚩", medium: "🗺️", high: "🎉" }}
         messages={{
           low: "Brawo! Pamiętaj, praktyka czyni mistrza!",
           medium: "Świetnie! Prawie wszystkie flagi rozpoznane!",
           high: "Gratulacje! Znasz perfekcyjnie wszystkie flagi!"
         }}
-        gameMode="FLAGS"
+        gameMode={gameType === "time" ? "FLAGS_TIME" : "FLAGS"}
       />
     );
   }
@@ -397,8 +475,17 @@ const Flags = () => {
 
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold mb-2">Nauka Flag 🚩</h1>
-          <p className="text-muted-foreground">Pytanie {currentIndex + 1} z {gameCountries.length}</p>
-          <p className="text-sm text-muted-foreground mt-2">Wynik: {score} / {answeredQuestions}</p>
+          {gameType === "time" ? (
+            <div className="flex justify-center gap-6 mt-4">
+              <p className="text-xl font-bold text-destructive animate-pulse">⏱️ Czas: {timeLeft}s</p>
+              <p className="text-xl font-bold">🎯 Wynik: {score} / {attempted}</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-muted-foreground">Pytanie {currentIndex + 1} z {gameCountries.length}</p>
+              <p className="text-sm text-muted-foreground mt-2">Wynik: {score} / {answeredQuestions}</p>
+            </>
+          )}
         </div>
 
         <Card className="p-8">
