@@ -10,7 +10,9 @@ const Index = () => {
   const lvlInfo = getLevelInfo(xp);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+    <div className={`min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 transition-all duration-300 ${
+      isAuthenticated ? "lg:pr-[340px]" : ""
+    }`}>
       {/* Panel logowania w prawym górnym rogu */}
       <div className="fixed top-4 right-[70px] z-50 flex items-center gap-2">
         {isAuthenticated ? (
@@ -69,7 +71,7 @@ const Index = () => {
 
       {/* Player Card Section */}
       {isAuthenticated && (
-        <section className="container mx-auto px-4 pb-8 max-w-xl animate-in fade-in slide-in-from-bottom-5 duration-500">
+        <section className="lg:fixed lg:top-20 lg:right-6 lg:w-80 lg:z-40 lg:px-0 lg:pb-0 container mx-auto px-4 pb-8 max-w-xl animate-in fade-in lg:slide-in-from-right-5 slide-in-from-bottom-5 duration-500">
           <Card className="bg-gradient-to-br from-card to-primary/5 border-primary/20 shadow-xl overflow-hidden">
             <CardHeader className="flex flex-row items-center gap-4 pb-4 bg-primary/5">
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl shadow-inner">
